@@ -85,18 +85,39 @@ const overlayCss = `
   font: 600 13px/1 ui-sans-serif, system-ui, sans-serif;
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
-.vft-card {
-  position: fixed; width: 256px; z-index: ${Z}; pointer-events: auto;
-  background: #fff; color: #374151; border: 1px solid #e5e7eb; border-radius: 10px;
-  padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);
-  font: 400 14px/1.4 ui-sans-serif, system-ui, sans-serif;
+/* The pin confirmation is a toast: pinned to the bottom-center, sitting safely above
+   the Comment toggle so the two never overlap. Fades in while rising, fades back down
+   on the way out. The translate(-50%) keeps it centered through the whole animation. */
+@keyframes vft-toast-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
 }
+@keyframes vft-toast-out {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to   { opacity: 0; transform: translate(-50%, 12px); }
+}
+.vft-card {
+  position: fixed; bottom: 66px; left: 50%; transform: translateX(-50%);
+  z-index: ${Z}; pointer-events: auto;
+  max-width: min(90vw, 460px);
+  display: flex; align-items: center; gap: 14px;
+  background: ${ACCENT}; color: #fff; border-radius: 10px;
+  padding: 12px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  font: 500 13px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  animation: vft-toast-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.vft-card--leaving { animation: vft-toast-out 200ms ease-in both; }
 .vft-card p { margin: 0; }
-.vft-card .vft-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
+.vft-card .vft-actions { margin: 0; flex: none; }
 .vft-cancel {
-  font: 500 13px/1 ui-sans-serif, system-ui, sans-serif;
-  padding: 6px 10px; border-radius: 7px; border: 1px solid #d1d5db;
-  background: #fff; color: #374151; cursor: pointer;
+  font: 600 12px/1 ui-sans-serif, system-ui, sans-serif;
+  padding: 6px 10px; border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: transparent; color: #fff; cursor: pointer; white-space: nowrap;
+}
+.vft-cancel:hover { background: rgba(255, 255, 255, 0.15); }
+@media (prefers-reduced-motion: reduce) {
+  .vft-card, .vft-card--leaving { animation: none; }
 }
 `;
 
@@ -123,6 +144,10 @@ interface PinState {
   selector: string;
   wrap: HTMLElement;
   card: HTMLElement;
+  // Where the user clicked, stored as an offset from the target's top-left so the
+  // marker rides along with the element on scroll/resize instead of snapping to a corner.
+  offsetX: number;
+  offsetY: number;
 }
 
 export function mountOverlay(opts: MountOptions = {}): OverlayHandle {
@@ -186,22 +211,48 @@ export function mountOverlay(opts: MountOptions = {}): OverlayHandle {
   function positionPin(): void {
     if (!pin) return;
     const r = pin.target.getBoundingClientRect();
-    pin.wrap.style.top = `${r.top - 10}px`;
-    pin.wrap.style.left = `${r.right - 14}px`;
-    pin.card.style.top = `${r.bottom + 8}px`;
-    pin.card.style.left = `${Math.max(8, r.left)}px`;
+    // Anchor the marker on the exact clicked point (clamped inside the element so it
+    // can't drift outside if the element later shrinks). The wrap is 24×24, so offset
+    // by 12 to center the "?" on the point rather than hang it off the corner.
+    const offsetX = Math.max(0, Math.min(pin.offsetX, r.width));
+    const offsetY = Math.max(0, Math.min(pin.offsetY, r.height));
+    const x = r.left + offsetX;
+    const y = r.top + offsetY;
+    pin.wrap.style.top = `${y - 12}px`;
+    pin.wrap.style.left = `${x - 12}px`;
+    // The toast is a fixed bottom-center element (positioned purely in CSS), so it is
+    // intentionally NOT tied to the element's box — only the marker tracks the element.
   }
 
   function removePin(): void {
     if (!pin) return;
-    pin.wrap.remove();
-    pin.card.remove();
+    const { wrap, card } = pin;
     pin = null;
     window.removeEventListener("scroll", positionPin, true);
     window.removeEventListener("resize", positionPin);
+    // The marker goes at once; the toast plays its fade-out, then unmounts. A timeout
+    // backstops the case where animationend never fires (reduced motion, background tab).
+    wrap.remove();
+    let removed = false;
+    const finish = (): void => {
+      if (removed) return;
+      removed = true;
+      card.remove();
+    };
+    card.addEventListener("animationend", finish, { once: true });
+    card.classList.add("vft-card--leaving");
+    setTimeout(finish, 400);
   }
 
-  function createPin(target: HTMLElement, selector: string): void {
+  function createPin(
+    target: HTMLElement,
+    selector: string,
+    clientX: number,
+    clientY: number,
+  ): void {
+    const r0 = target.getBoundingClientRect();
+    const offsetX = clientX - r0.left;
+    const offsetY = clientY - r0.top;
     const wrap = document.createElement("div");
     wrap.className = "vft-marker-wrap";
     wrap.setAttribute("data-vft-ui", "");
@@ -224,7 +275,7 @@ export function mountOverlay(opts: MountOptions = {}): OverlayHandle {
     card.setAttribute("role", "status");
     const p = document.createElement("p");
     p.textContent =
-      "Pinned. Now describe what you want changed here in the terminal — your next message to Claude applies to this element.";
+      "Pinned. Describe your change in the terminal — your next message applies right here.";
     const actions = document.createElement("div");
     actions.className = "vft-actions";
     const cancelBtn = document.createElement("button");
@@ -242,7 +293,7 @@ export function mountOverlay(opts: MountOptions = {}): OverlayHandle {
 
     root.appendChild(wrap);
     root.appendChild(card);
-    pin = { target, selector, wrap, card };
+    pin = { target, selector, wrap, card, offsetX, offsetY };
     positionPin();
     window.addEventListener("scroll", positionPin, true);
     window.addEventListener("resize", positionPin);
@@ -303,7 +354,7 @@ export function mountOverlay(opts: MountOptions = {}): OverlayHandle {
 
     onPin(payload);
     clearHighlight();
-    createPin(target, payload.selector);
+    createPin(target, payload.selector, e.clientX, e.clientY);
   }
 
   // Capture phase so we win over the host page's own handlers.

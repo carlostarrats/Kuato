@@ -134,7 +134,7 @@ describe("standalone pin-only overlay (vanilla DOM, any framework)", () => {
     expect(document.querySelector("[data-vft-cancel]")).toBeTruthy();
   });
 
-  it("Cancel un-pins: marker + card gone and onCancel fires", () => {
+  it("Cancel un-pins: marker goes at once, toast fades out, onCancel fires", () => {
     const onCancel = vi.fn();
     handle = mountOverlay({ onPin: vi.fn(), onCancel });
     enable();
@@ -143,9 +143,16 @@ describe("standalone pin-only overlay (vanilla DOM, any framework)", () => {
 
     click(document.querySelector("[data-vft-cancel]")!);
 
+    // Marker and callback are immediate; the toast lingers to play its fade-out.
     expect(document.querySelectorAll("[data-vft-marker]")).toHaveLength(0);
-    expect(document.querySelector("[data-vft-pin-card]")).toBeNull();
     expect(onCancel).toHaveBeenCalledTimes(1);
+    const card = document.querySelector("[data-vft-pin-card]") as HTMLElement;
+    expect(card).toBeTruthy();
+    expect(card.classList.contains("vft-card--leaving")).toBe(true);
+
+    // When the fade-out animation ends, the toast unmounts.
+    card.dispatchEvent(new Event("animationend"));
+    expect(document.querySelector("[data-vft-pin-card]")).toBeNull();
   });
 
   it("clicking the overlay's own toggle never creates a pin", () => {
