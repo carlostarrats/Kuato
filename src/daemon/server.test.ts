@@ -6,9 +6,10 @@ import { createDaemonServer } from "./server";
 import type { NotePayload } from "../note";
 
 const note: NotePayload = {
-  file: "src/App.tsx",
-  line: 16,
   selector: "section.panel",
+  tag: "section",
+  text: "Account settings",
+  attrs: { "data-testid": "panel" },
 };
 
 let server: Server | null = null;
@@ -44,9 +45,30 @@ describe("daemon HTTP endpoints (the surfaces the hooks + overlay call)", () => 
 
     const got = await (await fetch(`${base}/note`)).json();
     expect(got.note).toMatchObject(note);
-    expect(got.context).toContain("src/App.tsx");
-    expect(got.context).toContain("16");
+    expect(got.context).toContain("Account settings");
     expect(got.context).toContain("section.panel");
+    expect(got.context).toContain("data-testid");
+  });
+
+  it("answers the CORS preflight so a cross-origin overlay (app port → daemon port) can POST", async () => {
+    const daemon = new NoteDaemon();
+    const base = await start(daemon);
+
+    const res = await fetch(`${base}/note`, {
+      method: "OPTIONS",
+      headers: {
+        origin: "http://localhost:5173",
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "content-type",
+      },
+    });
+
+    expect(res.status).toBe(204);
+    expect(res.headers.get("access-control-allow-origin")).toBe("*");
+    expect(res.headers.get("access-control-allow-methods")).toContain("POST");
+    expect(
+      (res.headers.get("access-control-allow-headers") ?? "").toLowerCase()
+    ).toContain("content-type");
   });
 
   it("POST /complete (the signal hook) clears the buffered pin", async () => {

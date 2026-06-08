@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": "src",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": false,
+    "declaration": false,
+    "sourceMap": false,
+    "types": ["node"]
+  },
+  "include": [
+    "src/cli.ts",
+    "src/daemon/main.ts",
+    "src/daemon/server.ts",
+    "src/daemon/NoteDaemon.ts",
+    "src/note.ts",
+    "src/install/hooks.ts"
+  ]
+}

@@ -2,30 +2,55 @@ import { describe, it, expect } from "vitest";
 import { NoteDaemon } from "./NoteDaemon";
 import type { NotePayload } from "../note";
 
+// A framework-agnostic pin: the browser captured WHAT was pointed at (identity), not a
+// source location. Claude resolves it to source by searching the repo.
 const note: NotePayload = {
-  file: "src/App.tsx",
-  line: 20,
   selector: "button.cta",
+  tag: "button",
+  text: "Subscribe now",
+  attrs: { "data-testid": "sub-cta", "aria-label": "Subscribe" },
+  ancestorText: "Pricing",
+  outerHTMLSnippet: `<button class="cta" data-testid="sub-cta">Subscribe now</button>`,
 };
 
 describe("NoteDaemon (pin + signal contract)", () => {
-  it("buffers a pin and builds submit context with location + selector (no comment field)", () => {
+  it("builds search-instruction context from the captured identity (no comment field)", () => {
     const d = new NoteDaemon();
     d.setNote(note);
 
     const ctx = d.buildSubmitContext();
     expect(ctx).not.toBeNull();
-    expect(ctx).toContain("src/App.tsx");
-    expect(ctx).toContain("20");
+    // the captured identity Claude searches by
+    expect(ctx).toContain("button");
+    expect(ctx).toContain("Subscribe now");
     expect(ctx).toContain("button.cta");
+    expect(ctx).toContain("data-testid");
+    expect(ctx).toContain("Pricing");
     // the comment is the user's terminal message — the context must make that clear
     expect(ctx!.toLowerCase()).toContain("terminal");
+    // it must tell Claude to LOCATE the source itself (search), not expect file:line
+    expect(ctx!.toLowerCase()).toContain("search");
   });
 
   it("includes the selected text for a text-selection pin", () => {
     const d = new NoteDaemon();
-    d.setNote({ ...note, text: "phrase" });
-    expect(d.buildSubmitContext()).toContain("phrase");
+    d.setNote({ ...note, selectedText: "phrase to change" });
+    expect(d.buildSubmitContext()).toContain("phrase to change");
+  });
+
+  it("includes an optional source hint ONLY when a React breadcrumb is present", () => {
+    const d = new NoteDaemon();
+
+    d.setNote(note); // no source
+    const without = d.buildSubmitContext()!;
+    expect(without.toLowerCase()).not.toContain("source hint");
+
+    d.setNote({ ...note, source: { file: "src/App.tsx", line: 20 } });
+    const withHint = d.buildSubmitContext()!;
+    expect(withHint).toContain("src/App.tsx");
+    expect(withHint).toContain("20");
+    expect(withHint.toLowerCase()).toContain("source hint");
+    expect(withHint.toLowerCase()).toContain("verify"); // don't blindly trust a stale breadcrumb
   });
 
   it("buffers EXACTLY ONE active pin at a time (latest replaces)", () => {

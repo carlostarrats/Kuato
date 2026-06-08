@@ -1,4 +1,4 @@
-import { DEFAULT_DAEMON_PORT, startDaemon } from "./server";
+import { DEFAULT_DAEMON_PORT, startDaemon } from "./server.js";
 
 // Standalone daemon runner (live wiring). Run via: npm run daemon
 const port = Number(process.env.VFT_DAEMON_PORT ?? DEFAULT_DAEMON_PORT);

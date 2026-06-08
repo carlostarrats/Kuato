@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import type { NotePayload } from "../note";
-import { NoteDaemon } from "./NoteDaemon";
+import type { NotePayload } from "../note.js";
+import { NoteDaemon } from "./NoteDaemon.js";
 
 // Milestone 4: thin HTTP wrapper over NoteDaemon. These are the surfaces the Claude
 // Code hooks and the browser overlay actually talk to:
@@ -38,6 +38,20 @@ export function createDaemonServer(daemon: NoteDaemon): Server {
     const url = (req.url ?? "/").split("?")[0];
 
     try {
+      // CORS preflight: the overlay is injected into the user's app (some other port)
+      // and POSTs cross-origin to this daemon. A JSON POST is "non-simple", so the
+      // browser sends an OPTIONS preflight first — answer it or every POST is blocked.
+      if (method === "OPTIONS") {
+        res.writeHead(204, {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, POST, OPTIONS",
+          "access-control-allow-headers": "content-type",
+          "access-control-max-age": "86400",
+        });
+        res.end();
+        return;
+      }
+
       if (method === "POST" && url === "/note") {
         const raw = await readBody(req);
         const note = JSON.parse(raw) as NotePayload;

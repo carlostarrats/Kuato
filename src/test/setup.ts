@@ -1,7 +1,9 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
-import { cleanup } from "@testing-library/react";
 
+// Vanilla-DOM tests — no React. Reset the document between tests so overlay chrome and
+// injected styles never leak across cases.
 afterEach(() => {
-  cleanup();
+  document.body.innerHTML = "";
+  document.head.innerHTML = "";
 });

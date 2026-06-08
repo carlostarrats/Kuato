@@ -1,4 +1,4 @@
-import type { NotePayload } from "../note";
+import type { NotePayload } from "../note.js";
 
 // Milestone 4: the seam's core, transport-agnostic so it's trivially testable and the
 // HTTP server / hooks are thin wrappers over it.
@@ -29,23 +29,56 @@ export class NoteDaemon {
   }
 
   /**
-   * The context string the send hook injects into the session. It carries only the
-   * WHERE (resolved source location + selector, plus selected text for a text pin) —
-   * the comment is whatever the user typed in the terminal this turn. The pairing of
-   * "their words" + "this code location" is the entire value. Null when nothing buffered.
+   * The context string the send hook injects into the session. It carries the captured
+   * IDENTITY of the element the user pointed at (text, attrs, selector, surrounding
+   * context) — NOT a source location. The comment is whatever the user typed in the
+   * terminal this turn. Claude, already running in the repo, locates the source itself
+   * by searching for that identity — which is what makes this framework-agnostic (works
+   * on React, Vue, Svelte, Next, or plain HTML). A React `_debugSource` breadcrumb, when
+   * present, rides along as an optional fast-path hint to verify, never to trust blindly.
+   * Null when nothing buffered.
    */
   buildSubmitContext(): string | null {
     const n = this.activeNote;
     if (!n) return null;
+
     const lines = [
-      "[visual-feedback pin] The user pointed at an element in the browser; their",
-      "request is the message they just typed in the terminal. Apply it here:",
-      `location: ${n.file}:${n.line}`,
-      `selector: ${n.selector}`,
+      "[kuato pin] The user pointed at an element in the browser. Their request is the",
+      "message they just typed in the terminal — apply it to THIS element.",
+      "",
+      "Locate the source yourself (works for any framework — search the repo for the",
+      "captured text / attributes / id, then confirm the match renders this element):",
+      `  tag: ${n.tag}`,
     ];
-    if (n.text !== undefined) {
-      lines.push(`selected text: ${n.text}`);
+
+    if (n.text) lines.push(`  text: ${JSON.stringify(n.text)}`);
+    lines.push(`  selector: ${n.selector}   # also use this to screenshot the element`);
+    if (n.id) lines.push(`  id: ${n.id}`);
+    if (n.classes?.length) lines.push(`  classes: ${n.classes.join(" ")}`);
+    if (n.attrs && Object.keys(n.attrs).length) {
+      const attrs = Object.entries(n.attrs)
+        .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+        .join(" ");
+      lines.push(`  attrs: ${attrs}`);
     }
+    if (n.ancestorText) lines.push(`  near: ${JSON.stringify(n.ancestorText)}`);
+    if (n.outerHTMLSnippet) lines.push(`  html: ${n.outerHTMLSnippet}`);
+    if (n.selectedText) {
+      lines.push(`  selected text: ${JSON.stringify(n.selectedText)}`);
+    }
+    if (n.source) {
+      lines.push(
+        `  source hint (verify before trusting): ${n.source.file}:${n.source.line}`
+      );
+    }
+
+    lines.push(
+      "",
+      "To find it: search (ripgrep) for the visible text / key attrs / id, then narrow.",
+      "To see it: screenshot via agent-browser using the selector above. Then make the",
+      'change; the dev server hot-reloads and the "?" marker clears when you finish.'
+    );
+
     return lines.join("\n");
   }
 

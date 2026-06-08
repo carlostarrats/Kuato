@@ -1,12 +1,18 @@
 # Kuato — point at your app, talk to Claude
 
-Kuato is a small, terminal-native **visual-feedback tool** for building your own
-React + Vite app together with [Claude Code](https://claude.com/claude-code).
+Kuato is a small, terminal-native **visual-feedback tool** for building your own web app
+— **any framework** (React, Vue, Svelte, Next, or plain HTML) — together with
+[Claude Code](https://claude.com/claude-code).
 
 You point at something in your running app and say what you want changed. Claude sees
-exactly what you pointed at — the real source file and line, plus a screenshot — makes
-the edit, and the page updates in front of you. It's a back-and-forth conversation with
-a visual channel, not a task list.
+exactly what you pointed at — its text, attributes, a selector, and a screenshot — finds
+where it lives in your code by **searching the repo**, makes the edit, and the page
+updates in front of you. It's a back-and-forth conversation with a visual channel, not a
+task list.
+
+**The code doesn't matter.** Kuato captures what's *rendered in the browser*, not any
+framework-specific dev breadcrumb, so it works the same whether your app is React, Vue,
+Svelte, Next, or a static HTML file.
 
 Kuato is **free and open source** under the [MIT License](LICENSE) — use it, fork it,
 build on it.
@@ -20,8 +26,8 @@ build on it.
    a heading, a misworded sentence. A small **“?” marker** pins to it.
 3. You tell Claude, in the terminal, what you want: *“make this the primary button,”*
    *“tighten this spacing,”* *“fix this typo.”*
-4. Claude already knows **which** element you meant and **where it lives in the code**,
-   reads it, takes a screenshot, and makes the change. Vite hot-reloads.
+4. Claude knows **which** element you meant, finds **where it lives in the code** by
+   searching for it, takes a screenshot, and makes the change. Your dev server hot-reloads.
 5. The “?” disappears the moment the change is visible — your turn again.
 
 One thing in the air at a time. The marker *is* the turn indicator: present means it’s
@@ -53,98 +59,70 @@ message to Claude *is* the comment, and the pin silently rides along with it.
   npm i -g agent-browser && agent-browser install
   ```
 
-### 2. Install the project
+### 2. Install Kuato globally (one-time)
+
+From this repo:
 ```bash
 npm install
+npm run build
+npm install -g .
 ```
-
-### 3. Connect it to Claude Code (one-time)
-
-Kuato talks to Claude Code through two **hooks**. They live in
-**`.claude/settings.json`** in this project. If you cloned this repo, that file is
-already here — but the hook commands use **absolute paths**, so you must point them at
-**wherever this repo lives on your machine.**
-
-Open `.claude/settings.json` and make sure it looks like this, with the paths replaced
-by your actual project path:
-
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node /ABSOLUTE/PATH/TO/Kuato/hooks/send-note.mjs",
-            "timeout": 5,
-            "statusMessage": "Attaching visual-feedback note"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node /ABSOLUTE/PATH/TO/Kuato/hooks/signal-done.mjs",
-            "timeout": 5,
-            "statusMessage": "Clearing visual-feedback marker"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-- **`UserPromptSubmit` → `send-note.mjs`** attaches your pinned element to your next
-  message.
-- **`Stop` → `signal-done.mjs`** clears the “?” marker when Claude finishes.
-- Both do nothing unless the daemon is running, so they’re safe to leave in place.
-
-> **Reload required.** Claude Code reads hooks (and slash commands) at startup. After
-> editing `.claude/settings.json`, **restart Claude Code** (or open the `/hooks` menu
-> once) so they take effect. You can confirm they’re registered in `/hooks`.
-
-### 4. Start a feedback session
-
-The easy way — in Claude Code, run:
-```
-/kuato
-```
-That starts the local daemon, starts the dev server, and opens your app in Chrome. Then
-click **Comment**, click an element, and tell Claude what you want.
-
-Or start the parts manually:
+That builds the tool and symlinks a global **`kuato`** command (just like a regular CLI),
+so it works from **any project** — exactly like your other global tools. Confirm with:
 ```bash
-npm run dev      # the app at http://localhost:5173
-npm run daemon   # the local feedback daemon (port 42100)
+kuato status
 ```
-(then point agent-browser at http://localhost:5173, or just open it in Chrome yourself.)
+
+The global **`kuato` skill** (at `~/.claude/skills/kuato/`) teaches Claude Code how to
+drive it. No per-project hook editing, no absolute paths to paste.
+
+### 3. Start a feedback session — in any project
+
+Open your app's dev server (whatever framework, whatever port), then in Claude Code say:
+```
+kuato            # or: kuato http://localhost:3000
+```
+Claude runs `kuato start`, which boots the local daemon and wires the two feedback hooks
+into **the project you're in**. Then Claude opens your app in Chrome and injects the
+overlay. Flip on **Comment**, click an element (or select text), and tell Claude what you
+want — the pin rides along with your message automatically.
+
+Under the hood `kuato start` does two things:
+- starts the **daemon** (port 42100) — a tiny local relay, framework-agnostic;
+- wires `send-note.mjs` (UserPromptSubmit) + `signal-done.mjs` (Stop) into this project's
+  `.claude/settings.json`, pointing at the installed scripts. They no-op when the daemon
+  is down, so they're safe to leave.
+
+> **Reload note.** Claude Code reads hooks at startup. The first time `kuato start` wires
+> hooks into a project, restart Claude Code (or open `/hooks`) so they take effect.
+
+Stop anytime with `kuato stop`; remove a project's hooks entirely with `kuato uninstall`.
 
 ---
 
 ## How it works under the hood
 
-Four small pieces, all in this repo:
+Five small pieces, all in this repo:
 
-- **The pointing overlay** (`src/overlay`) — the Comment toggle, hover highlight,
-  click/text-select capture, the “?” marker, and the pin card. Injected into your page
-  by the dev server.
-- **The element→source bridge** (`src/bridge`) — turns a clicked element or a text
-  selection into its real `file:line` + a CSS selector, using Vite’s built-in dev
-  source data. (This is why it only works on *your own* dev server — that’s the
-  intended scope.)
+- **The standalone overlay** (`src/overlay`) — the Comment toggle, hover highlight,
+  click/text-select capture, the “?” marker, and the pin card. A self-contained vanilla-JS
+  bundle (`dist/overlay/kuato-overlay.js`) injected into **whatever page is in the
+  browser** — no React or framework needed on the host page.
+- **The capture bridge** (`src/bridge/captureContext.ts`) — turns a clicked element or a
+  text selection into its framework-agnostic **identity**: visible text, a CSS selector,
+  curated attributes (`data-*`, `aria-label`, …), and surrounding context. Claude — already
+  in your repo — finds the source by **searching** for that identity. (A React+Vite dev
+  breadcrumb, if present, rides along as an optional hint; it's never required.)
 - **The daemon** (`src/daemon`) — a tiny local service that holds the one active pin and
   signals the overlay when Claude is done.
 - **The seam** (`hooks/`) — two Claude Code hooks: one quietly attaches the pinned
-  location to your next message; the other clears the “?” when Claude finishes.
+  element to your next message; the other clears the “?” when Claude finishes.
+- **The CLI** (`src/cli.ts`) — the global `kuato` command (`start`/`stop`/`status`/
+  `uninstall`) that boots the daemon and wires the hooks into the current project.
 
 When the daemon is running, feedback mode is **on**; when it isn’t, the hooks do nothing.
-That’s what keeps Kuato cleanly separate from ordinary browser use — only `/kuato`
-turns it on.
+That’s what keeps Kuato cleanly separate from ordinary browser use — only `kuato` turns
+it on.
 
 ---
 
@@ -152,11 +130,12 @@ turns it on.
 
 | Command | What it does |
 |---|---|
-| `/kuato` | Start a full feedback session (daemon + dev server + browser) |
-| `npm run dev` | Run the app at http://localhost:5173 |
-| `npm run daemon` | Run the local feedback daemon |
+| `kuato start [url]` | Start the daemon + wire feedback hooks into the current project |
+| `kuato stop` | Stop the daemon |
+| `kuato status` | Show daemon + hook + overlay state |
+| `kuato uninstall` | Remove this project's hooks and stop the daemon |
+| `npm run build` | Compile the CLI/daemon + bundle the overlay to `dist/` |
 | `npm test` | Run the test suite |
-| `npm run build` | Production build |
 
 ---
 
@@ -168,8 +147,9 @@ Chrome (snapshots, screenshots, stable element references) right from the termin
 Kuato uses it as the shared browser surface so you and Claude are always looking at the
 same thing. Thank you to the Vercel team for building it.
 
-Built with [React](https://react.dev) + [Vite](https://vite.dev), and made to be used
-with [Claude Code](https://claude.com/claude-code).
+Built as a small, dependency-light TypeScript CLI (compiled with `tsc`, overlay bundled
+with [esbuild](https://esbuild.github.io)), and made to be used with
+[Claude Code](https://claude.com/claude-code).
 
 ---
 

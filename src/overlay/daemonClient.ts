@@ -1,8 +1,13 @@
 import type { NotePayload } from "../note";
-import type { ClearSignal } from "./AnnotationOverlay";
 
 // Browser side of the seam. The overlay POSTs committed notes to the daemon and
 // subscribes to its SSE "clear" stream, which the completion signal hook triggers.
+
+// The overlay subscribes to this; the daemon emits when the change has become visible,
+// clearing the pending marker. Structurally satisfied by NoteDaemon.
+export interface ClearSignal {
+  subscribe(listener: () => void): () => void;
+}
 
 const DEFAULT_BASE = "http://127.0.0.1:42100";
 
@@ -27,6 +32,8 @@ export function cancelNote(base: string = DEFAULT_BASE): void {
 export function createDaemonClearSignal(base: string = DEFAULT_BASE): ClearSignal {
   return {
     subscribe(listener: () => void): () => void {
+      // No EventSource (non-browser / test env) → a no-op signal rather than a crash.
+      if (typeof EventSource === "undefined") return () => {};
       const source = new EventSource(`${base}/events`);
       source.addEventListener("clear", () => listener());
       return () => source.close();
