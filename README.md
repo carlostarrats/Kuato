@@ -8,6 +8,9 @@ exactly what you pointed at — the real source file and line, plus a screenshot
 the edit, and the page updates in front of you. It's a back-and-forth conversation with
 a visual channel, not a task list.
 
+Kuato is **free and open source** under the [MIT License](LICENSE) — use it, fork it,
+build on it.
+
 ---
 
 ## What it feels like
@@ -42,34 +45,84 @@ message to Claude *is* the comment, and the pin silently rides along with it.
 
 ## Getting started
 
-**You’ll need**
+### 1. Install the prerequisites
 - [Node.js](https://nodejs.org) 18+
 - [Claude Code](https://claude.com/claude-code)
-- [agent-browser](https://github.com/vercel-labs/agent-browser) (see Credits) —
-  `npm i -g agent-browser && agent-browser install`
+- [agent-browser](https://github.com/vercel-labs/agent-browser) (see Credits):
+  ```bash
+  npm i -g agent-browser && agent-browser install
+  ```
 
-**Install**
+### 2. Install the project
 ```bash
 npm install
 ```
 
-**Start a feedback session — the easy way**
+### 3. Connect it to Claude Code (one-time)
 
-In Claude Code, run:
+Kuato talks to Claude Code through two **hooks**. They live in
+**`.claude/settings.json`** in this project. If you cloned this repo, that file is
+already here — but the hook commands use **absolute paths**, so you must point them at
+**wherever this repo lives on your machine.**
+
+Open `.claude/settings.json` and make sure it looks like this, with the paths replaced
+by your actual project path:
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /ABSOLUTE/PATH/TO/Kuato/hooks/send-note.mjs",
+            "timeout": 5,
+            "statusMessage": "Attaching visual-feedback note"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /ABSOLUTE/PATH/TO/Kuato/hooks/signal-done.mjs",
+            "timeout": 5,
+            "statusMessage": "Clearing visual-feedback marker"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- **`UserPromptSubmit` → `send-note.mjs`** attaches your pinned element to your next
+  message.
+- **`Stop` → `signal-done.mjs`** clears the “?” marker when Claude finishes.
+- Both do nothing unless the daemon is running, so they’re safe to leave in place.
+
+> **Reload required.** Claude Code reads hooks (and slash commands) at startup. After
+> editing `.claude/settings.json`, **restart Claude Code** (or open the `/hooks` menu
+> once) so they take effect. You can confirm they’re registered in `/hooks`.
+
+### 4. Start a feedback session
+
+The easy way — in Claude Code, run:
 ```
 /kuato
 ```
 That starts the local daemon, starts the dev server, and opens your app in Chrome. Then
 click **Comment**, click an element, and tell Claude what you want.
 
-> First time: the `/kuato` command and the hooks are picked up when Claude Code starts,
-> so if you don’t see `/kuato` yet, restart Claude Code once.
-
-**Start it manually instead**
+Or start the parts manually:
 ```bash
 npm run dev      # the app at http://localhost:5173
 npm run daemon   # the local feedback daemon (port 42100)
 ```
+(then point agent-browser at http://localhost:5173, or just open it in Chrome yourself.)
 
 ---
 
@@ -124,3 +177,12 @@ with [Claude Code](https://claude.com/claude-code).
 
 Everything Kuato adds — inside the project and the couple of things outside it — is
 listed in [`docs/KUATO-FOOTPRINT.md`](docs/KUATO-FOOTPRINT.md), with exact removal steps.
+
+---
+
+## License
+
+[MIT](LICENSE) © Carlos Tarrats. Open source — contributions and forks welcome.
+
+Note: this license covers Kuato’s own code. [agent-browser](https://github.com/vercel-labs/agent-browser)
+is a separate project by Vercel with its own license.
