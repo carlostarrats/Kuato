@@ -1,5 +1,4 @@
-<img max-width="400" max-height="100%" alt="kuato" src="https://github.com/user-attachments/assets/e11614e9-0518-481e-8fe1-2ba2404ae9cb" />
-
+<img width="400" alt="kuato" src="https://github.com/user-attachments/assets/e11614e9-0518-481e-8fe1-2ba2404ae9cb" />
 
 
 # Kuato — point at your app, talk to Claude
