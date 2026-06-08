@@ -144,8 +144,8 @@ it on.
 ## Good to know
 
 - **One pin at a time.** While a “?” is pending, the page is intentionally click-inert so
-  you can’t start a second pin. Press **Cancel** on the pin toast, or toggle **Comment**
-  off, to get the page back.
+  you can’t start a second pin. The **Comment** toggle flips to a black **Cancel** button
+  while you’re commenting — click it to drop the pin and get the page back.
 - **Reloads.** The overlay lives on `document.body`, so it survives Vite-style **HMR**.
   A **full page reload** (a hard refresh, or frameworks that full-reload instead of
   hot-swapping) wipes it — Claude re-injects it automatically on the next turn when it
