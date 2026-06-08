@@ -54,6 +54,11 @@ When a pin's context arrives alongside the user's message, act on THAT element:
 - **Locate the source by searching** — ripgrep the repo for the captured visible text / `data-*` / `aria-label` / id, then narrow and confirm the match renders this element. Do NOT expect a `file:line` to be handed to you; the optional `source hint` (only present on React+Vite dev) is a convenience to *verify*, never to trust blindly.
 - **See it** — screenshot the element via `agent-browser` using the pin's selector.
 - **Make the change** and let the user's dev server hot-reload. The "?" marker clears on RESULT (the Stop hook), not at edit start.
+- **Force a reload for non-HMR pages, and BUST THE CACHE.** Vite/HMR apps repaint the edit on their own — do nothing. But a **static page or any app without HMR** (plain `.html`, a `python -m http.server`, frameworks that don't hot-reload CSS) will NOT show the change until the page reloads — and Chrome will serve the *cached* CSS/JS even on a fresh `agent-browser open` of the same URL, so the edit silently appears not to have worked. When the page has no HMR, reload with a **cache-busting query param** so Chrome refetches:
+  ```bash
+  agent-browser open "<url>?v=<n>"      # bump <n> each turn (v=2, v=3, …); any unused param works
+  ```
+  Then **verify the edit actually landed in the live DOM** — don't trust the file write alone. `eval` the computed style / text you just changed (e.g. `getComputedStyle(document.querySelector('.masthead')).borderBottomStyle`) and confirm it matches the edit before telling the user it's done. If it still shows the old value, the cache won — bump the param and reload again.
 - **Re-inject if the page fully reloaded.** The overlay survives Vite-style HMR (it lives on `document.body`), but a **full page reload** (some frameworks, a hard refresh, or a static page with no HMR) wipes it. After a change, if the **Comment** button is gone (`agent-browser eval "!document.querySelector('[data-vft-toggle]')"` prints `true`), re-inject the overlay bundle so the next pin still works. Cheap to check each turn.
 - **Don't queue or batch** — one pin, one change, then the marker clears and it's their turn.
 

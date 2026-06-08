@@ -107,7 +107,7 @@ Stop anytime with `kuato stop`; remove a project's hooks entirely with `kuato un
 Five small pieces, all in this repo:
 
 - **The standalone overlay** (`src/overlay`) — the Comment toggle, hover highlight,
-  click/text-select capture, the “?” marker, and the pin card. A self-contained vanilla-JS
+  click/text-select capture, the “?” marker, and the pin toast. A self-contained vanilla-JS
   bundle (`dist/overlay/kuato-overlay.js`) injected into **whatever page is in the
   browser** — no React or framework needed on the host page.
 - **The capture bridge** (`src/bridge/captureContext.ts`) — turns a clicked element or a
@@ -144,12 +144,14 @@ it on.
 ## Good to know
 
 - **One pin at a time.** While a “?” is pending, the page is intentionally click-inert so
-  you can’t start a second pin. Press **Cancel** on the pin card, or toggle **Comment**
+  you can’t start a second pin. Press **Cancel** on the pin toast, or toggle **Comment**
   off, to get the page back.
 - **Reloads.** The overlay lives on `document.body`, so it survives Vite-style **HMR**.
   A **full page reload** (a hard refresh, or frameworks that full-reload instead of
   hot-swapping) wipes it — Claude re-injects it automatically on the next turn when it
-  notices the Comment button is gone.
+  notices the Comment button is gone. On a **static page with no HMR**, the browser may
+  also serve cached CSS/JS on reload, so Claude reloads with a cache-busting query param to
+  be sure you see the change.
 - **Hooks are safe to leave.** `send-note.mjs` / `signal-done.mjs` do nothing unless the
   daemon is running, so a project that’s been `kuato start`-ed once is harmless when the
   daemon is off. Run `kuato uninstall` to remove them entirely.
