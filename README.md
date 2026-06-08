@@ -66,15 +66,17 @@ From this repo:
 npm install
 npm run build
 npm install -g .
+kuato install      # install the Claude Code skill (one-time)
 ```
-That builds the tool and symlinks a global **`kuato`** command (just like a regular CLI),
-so it works from **any project** — exactly like your other global tools. Confirm with:
+The first three lines build the tool and symlink a global **`kuato`** command (just like a
+regular CLI), so it works from **any project**. `kuato install` then copies the bundled
+Claude Code skill to `~/.claude/skills/kuato/`, which teaches Claude Code how to drive it —
+no per-project hook editing, no absolute paths to paste. (`kuato install` only ever writes
+to `~/.claude/skills/kuato/`; it never touches your other skills.) Restart Claude Code (or
+open `/skills`) once so it picks up the new skill, then confirm:
 ```bash
-kuato status
+kuato status       # shows daemon, hooks, overlay, and skill state
 ```
-
-The global **`kuato` skill** (at `~/.claude/skills/kuato/`) teaches Claude Code how to
-drive it. No per-project hook editing, no absolute paths to paste.
 
 ### 3. Start a feedback session — in any project
 

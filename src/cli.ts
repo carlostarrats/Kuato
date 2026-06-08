@@ -30,6 +30,13 @@ const HOOKS_DIR = join(INSTALL_ROOT, "hooks");
 const DAEMON_ENTRY = join(__dirname, "daemon", "main.js");
 const OVERLAY_BUNDLE = join(__dirname, "overlay", "kuato-overlay.js");
 
+// The Claude Code skill that teaches the agent how to drive Kuato. The repo ships the
+// canonical copy at <install>/skill/SKILL.md; `kuato install` copies it into the user's
+// global skills dir. We touch ONLY ~/.claude/skills/kuato — never any sibling skill.
+const SKILL_SRC = join(INSTALL_ROOT, "skill", "SKILL.md");
+const SKILL_DEST_DIR = join(homedir(), ".claude", "skills", "kuato");
+const SKILL_DEST = join(SKILL_DEST_DIR, "SKILL.md");
+
 const STATE_DIR = join(homedir(), ".kuato");
 const PID_FILE = join(STATE_DIR, "daemon.pid");
 const PORT = Number(process.env.VFT_DAEMON_PORT ?? 42100);
@@ -138,6 +145,7 @@ async function cmdStatus(): Promise<void> {
   console.log(`daemon : ${up ? `up (${BASE})` : "down"}`);
   console.log(`hooks  : ${wired ? "wired in this project" : "not wired here"}`);
   console.log(`overlay: ${existsSync(OVERLAY_BUNDLE) ? OVERLAY_BUNDLE : "not built (run: npm run build)"}`);
+  console.log(`skill  : ${existsSync(SKILL_DEST) ? `installed (${SKILL_DEST})` : "not installed (run: kuato install)"}`);
 }
 
 async function cmdUninstall(): Promise<void> {
@@ -152,13 +160,31 @@ function cmdOverlayPath(): void {
   console.log(OVERLAY_BUNDLE);
 }
 
+function cmdInstall(): void {
+  // Copy the bundled skill into the user's global skills dir so Claude Code knows how
+  // to drive Kuato. Scoped strictly to ~/.claude/skills/kuato — we never read, list, or
+  // modify any other skill the user has installed.
+  if (!existsSync(SKILL_SRC)) {
+    console.error(
+      `! skill source not found at ${SKILL_SRC}\n  (run \`npm run build\` from the Kuato repo, then reinstall with \`npm install -g .\`)`
+    );
+    process.exitCode = 1;
+    return;
+  }
+  mkdirSync(SKILL_DEST_DIR, { recursive: true });
+  writeFileSync(SKILL_DEST, readFileSync(SKILL_SRC, "utf8"));
+  console.log(`✓ installed Kuato skill → ${SKILL_DEST}`);
+  console.log("  Restart Claude Code (or open /skills) so it picks up the skill.");
+}
+
 function usage(): void {
   console.log(`kuato — terminal-native visual feedback (any framework)
 
 Usage:
+  kuato install      install the Claude Code skill (one-time, after global install)
   kuato start [url]   start daemon + wire hooks into this project
   kuato stop          stop the daemon
-  kuato status        show daemon + hook + overlay state
+  kuato status        show daemon + hook + overlay + skill state
   kuato uninstall     remove hooks from this project, stop daemon
   kuato overlay-path  print the overlay bundle path (for injection)`);
 }
@@ -166,6 +192,9 @@ Usage:
 async function main(): Promise<void> {
   const [cmd, arg] = process.argv.slice(2);
   switch (cmd) {
+    case "install":
+      cmdInstall();
+      break;
     case "start":
       await cmdStart(arg);
       break;
