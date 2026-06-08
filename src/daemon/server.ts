@@ -91,7 +91,14 @@ export function createDaemonServer(daemon: NoteDaemon): Server {
         const unsubscribe = daemon.subscribe(() => {
           res.write("event: clear\ndata: {}\n\n");
         });
-        req.on("close", unsubscribe);
+        // Keep-alive comment so idle connections aren't reaped by proxies / OS timeouts
+        // (the overlay can sit pinned for minutes waiting on the result).
+        const heartbeat = setInterval(() => res.write(": keep-alive\n\n"), 25_000);
+        heartbeat.unref?.();
+        req.on("close", () => {
+          clearInterval(heartbeat);
+          unsubscribe();
+        });
         return;
       }
 

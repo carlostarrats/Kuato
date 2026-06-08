@@ -1,5 +1,15 @@
 # Visual Feedback Tool — Spec
 
+> ⚠️ **Historical / superseded.** This spec (and the `loop-task-milestone-*.md` and
+> `coverage-map.md` files) describe the original **React + Vite** design, where a clicked
+> element was resolved to `file:line` via React fiber `_debugSource` breadcrumbs. Kuato was
+> since reworked to be **framework-agnostic**: the overlay captures the element's identity
+> (text, attributes, selector, context) and Claude finds the source by **searching the
+> repo** — so it works on React, Vue, Svelte, Next, or plain HTML. It's also now a global
+> `kuato` CLI + skill, not a project `/kuato` command. For the current design and usage,
+> see [`../README.md`](../README.md) and [`KUATO-FOOTPRINT.md`](KUATO-FOOTPRINT.md). This
+> file is kept only as a record of the original intent.
+
 A terminal-native, conversational visual-feedback tool for developing your own web app
 together with Claude Code. You point at things in your running app and leave comments;
 Claude sees what you pointed at (with the real source location), changes the code, and the

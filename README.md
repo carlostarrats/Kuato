@@ -139,6 +139,23 @@ it on.
 
 ---
 
+## Good to know
+
+- **One pin at a time.** While a “?” is pending, the page is intentionally click-inert so
+  you can’t start a second pin. Press **Cancel** on the pin card, or toggle **Comment**
+  off, to get the page back.
+- **Reloads.** The overlay lives on `document.body`, so it survives Vite-style **HMR**.
+  A **full page reload** (a hard refresh, or frameworks that full-reload instead of
+  hot-swapping) wipes it — Claude re-injects it automatically on the next turn when it
+  notices the Comment button is gone.
+- **Hooks are safe to leave.** `send-note.mjs` / `signal-done.mjs` do nothing unless the
+  daemon is running, so a project that’s been `kuato start`-ed once is harmless when the
+  daemon is off. Run `kuato uninstall` to remove them entirely.
+- **Any framework, your own dev server.** Kuato overlays onto the app *you* are running
+  (any port, any stack). It captures what’s rendered; Claude finds the source by search.
+
+---
+
 ## Credits
 
 The browser side rests on **[agent-browser](https://github.com/vercel-labs/agent-browser)

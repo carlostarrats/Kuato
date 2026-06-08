@@ -237,7 +237,18 @@ export function mountOverlay(opts: MountOptions = {}): OverlayHandle {
   function onMouseOver(e: MouseEvent): void {
     if (!enabled) return;
     const t = e.target;
-    if (!(t instanceof HTMLElement) || isOverlayUi(t) || t === highlighted) return;
+    // Moving onto our own chrome, the bare page root, or a non-element → drop any
+    // highlight rather than leaving it stuck or outlining the whole page.
+    if (
+      !(t instanceof HTMLElement) ||
+      isOverlayUi(t) ||
+      t === document.body ||
+      t === document.documentElement
+    ) {
+      clearHighlight();
+      return;
+    }
+    if (t === highlighted) return;
     clearHighlight();
     t.setAttribute("data-vft-highlight", "");
     highlighted = t;

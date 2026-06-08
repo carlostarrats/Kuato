@@ -40,7 +40,16 @@ async function isDaemonUp(): Promise<boolean> {
     const res = await fetch(`${BASE}/note`, {
       signal: AbortSignal.timeout(500),
     });
-    return res.ok;
+    if (!res.ok) return false;
+    // Confirm it's actually OUR daemon, not some unrelated server squatting on the
+    // port — GET /note returns a { note, context } envelope.
+    const body = (await res.json()) as unknown;
+    return (
+      typeof body === "object" &&
+      body !== null &&
+      "note" in body &&
+      "context" in body
+    );
   } catch {
     return false;
   }

@@ -72,6 +72,31 @@ describe("standalone pin-only overlay (vanilla DOM, any framework)", () => {
     expect(target).toHaveAttribute("data-vft-highlight");
   });
 
+  it("clears the highlight when the pointer moves to the page body or empty space", () => {
+    handle = mountOverlay({ onPin: vi.fn() });
+    enable();
+    const target = document.querySelector(".page-action") as HTMLElement;
+    target.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    expect(target).toHaveAttribute("data-vft-highlight");
+
+    // moving onto the bare body (a gap/margin) must not leave a stuck outline,
+    // and must not outline the whole page
+    document.body.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    expect(target).not.toHaveAttribute("data-vft-highlight");
+    expect(document.body).not.toHaveAttribute("data-vft-highlight");
+  });
+
+  it("clears the highlight when the pointer moves onto the overlay's own UI", () => {
+    handle = mountOverlay({ onPin: vi.fn() });
+    enable();
+    const target = document.querySelector(".page-action") as HTMLElement;
+    target.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    expect(target).toHaveAttribute("data-vft-highlight");
+
+    toggle().dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    expect(target).not.toHaveAttribute("data-vft-highlight");
+  });
+
   it("clicking pins immediately: one marker + identity payload, no comment box", () => {
     const onPin = vi.fn();
     handle = mountOverlay({ onPin });

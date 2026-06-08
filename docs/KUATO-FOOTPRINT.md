@@ -4,9 +4,17 @@ Everything Claude created for the Visual Feedback Tool, and exactly how to remov
 each piece. Split into **inside the project** (gone if you delete the project folder)
 and **outside the project** (lives elsewhere on your machine — must be removed by hand).
 
-> TL;DR — to remove *everything*: delete the project folder
-> `/Users/carlostarrats/Documents/Projects/Kuato`, then do the two **outside-the-project**
-> cleanups in section B.
+> TL;DR — Kuato is now a **global** tool, so deleting the project folder isn't enough.
+> To remove *everything*:
+> ```bash
+> npm uninstall -g kuato                 # the global `kuato` command
+> rm -rf ~/.claude/skills/kuato ~/.kuato # the global skill + daemon state
+> # then, in any project you ran it in:  kuato uninstall  (before removing the global)
+> rm -rf /Users/carlostarrats/Documents/Projects/Kuato   # the source repo
+> ```
+> Plus the optional **outside-the-project** cleanups in section B (memory; agent-browser
+> is shared — usually keep). Tip: run any per-project `kuato uninstall` *before*
+> `npm uninstall -g kuato`, since uninstalling the global removes the `kuato` command.
 
 ---
 

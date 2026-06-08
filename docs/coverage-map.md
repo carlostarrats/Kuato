@@ -1,5 +1,10 @@
 # Coverage Map — Visual Feedback Tool spec → build plan
 
+> ⚠️ **Historical / superseded** — maps the original React+Vite build. The "React + Vite"
+> stack constraint below no longer holds; Kuato is now framework-agnostic. See
+> [`../README.md`](../README.md) and the banner in
+> [`visual-feedback-tool-spec.md`](visual-feedback-tool-spec.md).
+
 Every section of the spec, marked as one of:
 - **[LOOP n]** — has an objective pass/fail signal; gets a loop file.
 - **[CHECKPOINT]** — feel/taste; you judge it by eye between loops. Not loopable.
