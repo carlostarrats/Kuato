@@ -50,6 +50,14 @@ const overlayCss = `
   0%, 100% { transform: scale(1); opacity: 0.5; }
   50% { transform: scale(1.75); opacity: 0; }
 }
+/* The toggle pulses an expanding accent ring while commenting is OFF, to invite a
+   click; the ring stops the moment it's pressed. Base drop shadow is preserved in
+   every keyframe so it never flickers. */
+@keyframes vft-toggle-pulse {
+  0%   { box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 0 0 rgba(99,102,241,0.55); }
+  70%  { box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 0 12px rgba(99,102,241,0); }
+  100% { box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 0 0 rgba(99,102,241,0); }
+}
 .vft-ui, .vft-ui * { box-sizing: border-box; }
 .vft-toggle {
   position: fixed; bottom: 16px; right: 16px; z-index: ${Z};
@@ -59,7 +67,13 @@ const overlayCss = `
   background: #e5e7eb; color: #111827;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: auto;
 }
+.vft-toggle[aria-pressed="false"] {
+  animation: vft-toggle-pulse 2s ease-out infinite;
+}
 .vft-toggle[aria-pressed="true"] { background: ${ACCENT}; color: #fff; }
+@media (prefers-reduced-motion: reduce) {
+  .vft-toggle[aria-pressed="false"] { animation: none; }
+}
 .vft-marker-wrap { position: fixed; width: 24px; height: 24px; z-index: ${Z}; pointer-events: none; }
 .vft-throb {
   position: absolute; inset: 0; border-radius: 9999px; background: ${ACCENT};
