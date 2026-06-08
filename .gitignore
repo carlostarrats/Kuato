@@ -12,3 +12,14 @@ dist/
 
 # local-only Claude Code overrides (personal, not shared)
 .claude/settings.local.json
+
+# local-only scratch docs (planning/coverage notes, not shared)
+docs/coverage-map.md
+docs/loop-task-milestone-1.md
+docs/loop-task-milestone-2.md
+docs/loop-task-milestone-3.md
+docs/loop-task-milestone-4.md
+docs/visual-feedback-tool-spec.md
+
+# local test fixture page
+test-newspaper.html

@@ -14,7 +14,8 @@ import {
 // clicking (or selecting text) PINS the spot — it drops a single "?" marker and emits the
 // captured element identity via `onPin`. You then describe what you want in the TERMINAL;
 // the daemon attaches this pin to that message. One place to point (browser), one place
-// to type (terminal). A small card at the pin shows instruction copy + a Cancel button.
+// to type (terminal). A toast confirms the pin; the Comment toggle itself flips to a black
+// "Cancel" button (no separate control) to drop the pin or stop commenting.
 // `clearSignal` — driven by the daemon when Claude finishes — clears the marker on RESULT.
 
 export interface MountOptions {
@@ -59,20 +60,37 @@ const overlayCss = `
   100% { box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 0 0 rgba(99,102,241,0); }
 }
 .vft-ui, .vft-ui * { box-sizing: border-box; }
-.vft-toggle {
+/* A single button lives in the bottom-right dock. It is the Comment toggle when
+   commenting is off and becomes the black Cancel control when it's on — there is no
+   separate Cancel button, so the two states never compete for the same job. */
+.vft-dock {
   position: fixed; bottom: 16px; right: 16px; z-index: ${Z};
-  display: inline-flex; align-items: center; gap: 6px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  pointer-events: none;
+}
+.vft-toggle {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font: 600 13px/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* min-width holds the wider "Comment" footprint so the button doesn't resize when it
+     flips to the shorter "Cancel" label. */
+  min-width: 108px;
   padding: 8px 12px; border-radius: 8px; border: 0; cursor: pointer;
   background: #e5e7eb; color: #111827;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15); pointer-events: auto;
+  transition: background 150ms ease;
 }
+/* The plus rotates 45° into an X when the button flips to Cancel. */
+.vft-toggle svg { transition: transform 150ms ease; }
 .vft-toggle[aria-pressed="false"] {
   animation: vft-toggle-pulse 2s ease-out infinite;
 }
-.vft-toggle[aria-pressed="true"] { background: ${ACCENT}; color: #fff; }
+.vft-toggle[aria-pressed="false"]:hover { background: #d1d5db; }
+.vft-toggle[aria-pressed="true"] { background: #111827; color: #fff; }
+.vft-toggle[aria-pressed="true"]:hover { background: #374151; }
+.vft-toggle[aria-pressed="true"] svg { transform: rotate(45deg); }
 @media (prefers-reduced-motion: reduce) {
   .vft-toggle[aria-pressed="false"] { animation: none; }
+  .vft-toggle svg { transition: none; }
 }
 .vft-marker-wrap { position: fixed; width: 24px; height: 24px; z-index: ${Z}; pointer-events: none; }
 .vft-throb {
@@ -108,14 +126,6 @@ const overlayCss = `
 }
 .vft-card--leaving { animation: vft-toast-out 200ms ease-in both; }
 .vft-card p { margin: 0; }
-.vft-card .vft-actions { margin: 0; flex: none; }
-.vft-cancel {
-  font: 600 12px/1 ui-sans-serif, system-ui, sans-serif;
-  padding: 6px 10px; border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  background: transparent; color: #fff; cursor: pointer; white-space: nowrap;
-}
-.vft-cancel:hover { background: rgba(255, 255, 255, 0.15); }
 @media (prefers-reduced-motion: reduce) {
   .vft-card, .vft-card--leaving { animation: none; }
 }
@@ -175,6 +185,12 @@ export function mountOverlay(opts: MountOptions = {}): OverlayHandle {
   root.setAttribute("data-vft-ui", "");
   document.body.appendChild(root);
 
+  // Bottom-right dock holds the single Comment/Cancel toggle.
+  const dock = document.createElement("div");
+  dock.className = "vft-dock";
+  dock.setAttribute("data-vft-ui", "");
+  root.appendChild(dock);
+
   const toggleBtn = document.createElement("button");
   toggleBtn.type = "button";
   toggleBtn.className = "vft-toggle";
@@ -183,16 +199,25 @@ export function mountOverlay(opts: MountOptions = {}): OverlayHandle {
   const toggleLabel = document.createElement("span");
   const renderToggle = () => {
     toggleBtn.setAttribute("aria-pressed", String(enabled));
-    toggleLabel.textContent = enabled ? "Commenting" : "Comment";
+    // While commenting is on the toggle IS the cancel control (black, "Cancel"); the
+    // plus rotates into an X via CSS. There is no separate Cancel button.
+    toggleLabel.textContent = enabled ? "Cancel" : "Comment";
   };
   toggleBtn.appendChild(svgPlus());
   toggleBtn.appendChild(toggleLabel);
   toggleBtn.addEventListener("click", () => {
     enabled = !enabled;
-    if (!enabled) clearHighlight();
+    if (!enabled) {
+      // Turning commenting off also drops any live pin (the button doubles as Cancel).
+      clearHighlight();
+      if (pin) {
+        removePin();
+        onCancel();
+      }
+    }
     renderToggle();
   });
-  root.appendChild(toggleBtn);
+  dock.appendChild(toggleBtn);
   renderToggle();
 
   function isOverlayUi(node: EventTarget | null): boolean {
@@ -274,22 +299,8 @@ export function mountOverlay(opts: MountOptions = {}): OverlayHandle {
     card.setAttribute("data-vft-pin-card", "");
     card.setAttribute("role", "status");
     const p = document.createElement("p");
-    p.textContent =
-      "Pinned. Describe your change in the terminal — your next message applies right here.";
-    const actions = document.createElement("div");
-    actions.className = "vft-actions";
-    const cancelBtn = document.createElement("button");
-    cancelBtn.type = "button";
-    cancelBtn.className = "vft-cancel";
-    cancelBtn.setAttribute("data-vft-cancel", "");
-    cancelBtn.textContent = "Cancel";
-    cancelBtn.addEventListener("click", () => {
-      removePin();
-      onCancel();
-    });
-    actions.appendChild(cancelBtn);
+    p.textContent = "Comment in your terminal to make any edits.";
     card.appendChild(p);
-    card.appendChild(actions);
 
     root.appendChild(wrap);
     root.appendChild(card);
