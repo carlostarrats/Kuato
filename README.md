@@ -1,3 +1,6 @@
+<img max width="400" alt="Kuato" src="https://github.com/user-attachments/assets/4f0fd4ff-53c3-40a1-a595-af67596cbfe7" />
+
+
 # Kuato — point at your app, talk to Claude
 
 Kuato is a small, terminal-native **visual-feedback tool** for building your own web app
