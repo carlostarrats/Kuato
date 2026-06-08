@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/carlostarrats/Documents/Projects/Kuato/hooks/send-note.mjs",
+            "timeout": 5,
+            "statusMessage": "Attaching visual-feedback note"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /Users/carlostarrats/Documents/Projects/Kuato/hooks/signal-done.mjs",
+            "timeout": 5,
+            "statusMessage": "Clearing visual-feedback marker"
+          }
+        ]
+      }
+    ]
+  }
+}
